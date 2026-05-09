@@ -188,7 +188,7 @@ class Evaluator:
         all_rows = []
         for scene in scenes:
             scene_dir = os.path.join(data_dir, scene)
-            print(f"Evaluating {scene}")
+            print(f"Evaluating {scene}", flush=True)
             row = self.evaluate_scene(scene_dir)
             if row is None:
                 print(f"  [skip] {scene} (missing or invalid)")
