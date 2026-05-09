@@ -24,6 +24,7 @@ source "${HOME}/miniconda3/etc/profile.d/conda.sh"
 conda activate telestyle
 
 # TODO: choose style — Camille: Watercolor, Sophia: ..., Quentin: ..., Emilien: ...
+# style names should match the file names in styles/ (without extension), e.g. "watercolor" for "watercolor.jpg"
 STYLE="watercolor"  
 DATASET_ROOT="$SHARED_SCRATCH_DIR/BlendedMVS/renamed"
 SAVE_DIR="$SHARED_SCRATCH_DIR/BlendedMVS/telestyle_output"
