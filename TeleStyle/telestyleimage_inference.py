@@ -1,5 +1,4 @@
 import torch
-import os
 from PIL import Image
 from diffsynth.pipelines.qwen_image import QwenImagePipeline, ModelConfig
 from huggingface_hub import hf_hub_download
@@ -76,8 +75,10 @@ class ImageStyleInference:
             w = minedge
             h = int(w * r) - int(w * r) % 16
 
-        content_img = content_img.resize((w, h))
-        style_img = style_img.resize((minedge, minedge))
+        if content_img.size != (w, h):
+            content_img = content_img.resize((w, h))
+        if style_img.size != (minedge, minedge):
+            style_img = style_img.resize((minedge, minedge))
 
         image = self.pipe(
             prompt,
@@ -102,7 +103,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--style", required=True, help="Path to style reference image")
     parser.add_argument("--dataset-root", required=True, help="Path to BlendedMVS root folder")
-    parser.add_argument("--save-dir", default="/home/lannoye/visint/TeleStyle/qwen_style_output")
+    parser.add_argument("--save-dir", required=True, help="Path to output directory")
     args = parser.parse_args()
 
     style_ref = args.style
