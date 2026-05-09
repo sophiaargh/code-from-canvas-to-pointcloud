@@ -98,6 +98,7 @@ class ImageStyleInference:
 
 if __name__ == "__main__":
     import argparse
+    from itertools import groupby
     from pathlib import Path
 
     parser = argparse.ArgumentParser()
@@ -115,12 +116,14 @@ if __name__ == "__main__":
     prompt = 'Style Transfer the style of Figure 2 to Figure 1, and keep the content and characteristics of Figure 1.'
 
     # Collect all frames across all scenes, sorted for deterministic order.
-    # Skip masked images (stem ends with "masked") and keep every 5th non-masked frame.
+    # Skip masked images (stem ends with "masked") and keep every 5th non-masked frame per scene.
     all_raw = sorted(dataset_root.glob("*/blended_images/*.jpg"))
-    non_masked = [f for f in all_raw if not f.stem.endswith("masked")]
-    all_frames = non_masked[::5]
+    all_frames = []
+    for _, scene_iter in groupby(all_raw, key=lambda f: f.parent.parent):
+        non_masked = [f for f in scene_iter if not f.stem.endswith("masked")]
+        all_frames.extend(non_masked[::5])
     total = len(all_frames)
-    print(f"Found {total} frames under {dataset_root} (every 5th of {len(non_masked)} non-masked, {len(all_raw)} total)")
+    print(f"Found {total} frames under {dataset_root} (every 5th per scene, from {len(all_raw)} total)")
 
     done = skipped = 0
     inference_engine = None  # load only if there is work to do
