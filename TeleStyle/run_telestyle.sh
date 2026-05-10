@@ -25,11 +25,12 @@ SCRIPT_DIR=$SLURM_SUBMIT_DIR
 source "${HOME}/miniconda3/etc/profile.d/conda.sh"
 conda activate telestyle
 
-# TODO: choose style — Camille: Watercolor, Sophia: ..., Quentin: ..., Emilien: ...
+# TODO: choose style — Camille: Watercolor, Sophia: oil_painting, Quentin: impressionism, Emilien: engraving
 # style names should match the file names in styles/ (without extension), e.g. "watercolor" for "watercolor.jpg"
-STYLE="watercolor"  
+STYLE="watercolor"
 DATASET_ROOT="$SHARED_SCRATCH_DIR/BlendedMVS/renamed"
 SAVE_DIR="$SHARED_SCRATCH_DIR/BlendedMVS/telestyle_output"
+HOME_BACKUP_DIR="$HOME/telestyle_output"
 
 STYLE_PATH=$(find "$SCRIPT_DIR/styles" -iname "${STYLE}.*" | head -1)
 if [[ -z "$STYLE_PATH" ]]; then
@@ -42,4 +43,5 @@ cd "/scratch/izar/$USER"
 python "$SCRIPT_DIR/telestyleimage_inference.py" \
     --style "$STYLE_PATH" \
     --dataset-root "$DATASET_ROOT" \
-    --save-dir "$SAVE_DIR"
+    --save-dir "$SAVE_DIR" \
+    --home-backup-dir "$HOME_BACKUP_DIR"
