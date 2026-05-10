@@ -10,10 +10,9 @@
 #SBATCH --output=evaluate.out    
 #SBATCH --error=evaluate.err    
 
-
+# change baseline_name to the baseline you evaluate (oil_painting ect)
 
 python -m eval_pipeline.runner \
-  --data_dir /scratch/izar/silly/BlendedMVS \
+  --data_dir /scratch/izar/silly/BlendedMVS/renamed \
   --checkpoint facebook/map-anything \
-  --baseline_name photographs \
-  --view_ids 0 10 20 30 40
+  --baseline_name photographs
