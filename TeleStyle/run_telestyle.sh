@@ -16,8 +16,6 @@ export HF_DATASETS_CACHE="/scratch/izar/$USER/huggingface/datasets"
 export SHARED_SCRATCH_DIR="/scratch/izar/silly"
 
 export PYTORCH_ALLOC_CONF=expandable_segments:True
-export TRANSFORMERS_OFFLINE=1
-export HF_HUB_OFFLINE=1
 export OMP_NUM_THREADS=8
 
 SCRIPT_DIR=$SLURM_SUBMIT_DIR
