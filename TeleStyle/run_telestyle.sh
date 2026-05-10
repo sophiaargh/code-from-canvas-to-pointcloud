@@ -6,6 +6,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
+#SBATCH --account=cs-503
+#SBATCH --qos=cs-503
 
 export HF_HOME="/scratch/izar/$USER/huggingface"
 export HF_HUB_CACHE="/scratch/izar/$USER/huggingface/hub"
