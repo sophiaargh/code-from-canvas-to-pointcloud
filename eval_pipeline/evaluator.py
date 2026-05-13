@@ -163,7 +163,7 @@ class Evaluator:
         
         # select every 5th view (5, 10, 15, ...) from the available set
         selected = [vid for vid in available if vid >= 5 and (vid % 5) == 0]
-        selected = selected[:5]
+        selected = selected[:8] # to avoid OOMs
         image_paths = [os.path.join(blended_dir, f"{vid:08d}.jpg") for vid in selected]
         gt_depth_paths = [os.path.join(depth_dir, f"{vid:08d}.pfm") for vid in selected]
 
