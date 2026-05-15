@@ -5,6 +5,7 @@ from scipy.spatial import cKDTree
 import torch
 from mapanything.utils.image import load_images
 from .models import infer
+import re
 
 
 # --- file readers / geometry (adapted small helpers) ---
@@ -132,26 +133,44 @@ def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
 # --- Evaluator class ---
 
 class Evaluator:
-    def __init__(self, model, device, view_ids, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results"):
+    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results"):
         self.model = model
         self.device = device
-        self.view_ids = view_ids
         self.baseline_name = baseline_name
         self.max_pts = max_pts
         self.out_dir = out_dir
         os.makedirs(self.out_dir, exist_ok=True)
 
     def evaluate_scene(self, scene_dir):
-        image_paths = [os.path.join(scene_dir, "blended_images", f"{vid:08d}.jpg") for vid in self.view_ids]
-        gt_depth_paths = [os.path.join(scene_dir, "rendered_depth_maps", f"{vid:08d}.pfm") for vid in self.view_ids]
-        missing = [p for p in image_paths + gt_depth_paths if not os.path.exists(p)]
-        if missing:
+        blended_dir = os.path.join(scene_dir, "blended_images")
+        depth_dir = os.path.join(scene_dir, "rendered_depth_maps")
+        if not os.path.isdir(blended_dir) or not os.path.isdir(depth_dir):
             return None
+
+        # gather available ids that have both image and depth
+        available = []
+        for fn in os.listdir(blended_dir):
+            m = re.match(r"(\d{8})\.jpg$", fn)
+            if not m:
+                continue
+            vid = int(m.group(1))
+            depth_path = os.path.join(depth_dir, f"{vid:08d}.pfm")
+            if os.path.exists(depth_path):
+                available.append(vid)
+        available = sorted(set(available))
+        if not available:
+            return None
+        
+        # select every 5th view (5, 10, 15, ...) from the available set
+        selected = [vid for vid in available if vid >= 5 and (vid % 5) == 0]
+        selected = selected[:8] # to avoid OOMs
+        image_paths = [os.path.join(blended_dir, f"{vid:08d}.jpg") for vid in selected]
+        gt_depth_paths = [os.path.join(depth_dir, f"{vid:08d}.pfm") for vid in selected]
+
         views = load_images(image_paths, resolution_set=518, norm_type="dinov2", patch_size=14)
-        # prefer the model's infer helper which handles device/dtype
         with torch.no_grad():
             predictions = infer(self.model, views)
-        # build depth stack
+
         pred_depth = np.stack(
             [pred["depth_along_ray"].squeeze(0)[..., 0].cpu().numpy() for pred in predictions],
             axis=0,
@@ -165,7 +184,8 @@ class Evaluator:
             return None
         abs_rel_scene = float(np.mean([m["AbsRel"] for m in per_view]))
         rmse_scene    = float(np.mean([m["RMSE"]   for m in per_view]))
-        pcd_metrics = evaluate_pointcloud(predictions, scene_dir, self.view_ids, self.max_pts)
+        pcd_metrics = evaluate_pointcloud(predictions, scene_dir, selected, self.max_pts)
+
         row = {
             "scene": os.path.basename(scene_dir),
             "baseline": self.baseline_name,
