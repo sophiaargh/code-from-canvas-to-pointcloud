@@ -6,6 +6,16 @@ Files:
 - runner.py   : CLI entrypoint
 
 Quick start:
+Create your conda environment:
+
+```bash
+conda create -n mapanything python==3.11
+conda activate mapanything
+```
+Install the necessary packages:
+```bash
+pip install -r requirements.txt
+```
 
 Activate your environment then run:
 
@@ -13,8 +23,13 @@ Activate your environment then run:
 python -m eval_pipeline.runner \
   --data_dir /path/to/BlendedMVS \
   --checkpoint facebook/map-anything \
-  --baseline_name photographs \
-  --view_ids 0 10 20 30 40
+  --baseline_name photographs 
+```
+
+For running on the cluster, run:
+
+```bash
+sbatch submit_evaluate.sh
 ```
 
 Notes:
