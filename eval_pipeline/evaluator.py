@@ -174,11 +174,12 @@ class Evaluator:
 
         # select every 5th view (5, 10, 15, ...) from the available set
         selected = [vid for vid in available if vid >= 5 and (vid % 5) == 0]
-        selected = selected[:5]
+        # limit number of selected views to avoid OOMs
+        selected = selected[:8]
         scene_name = os.path.basename(scene_dir)
-        # In styled mode, skip scenes where any selected view is missing a styled image.
-        # Falling back to original photos would silently corrupt the comparison.
         if self.styled_root and self.style_name:
+            # In styled mode, skip scenes where any selected view is missing a styled image.
+            # Falling back to original photos would silently corrupt the comparison.
             styled_paths = [self._styled_image_path(scene_name, vid) for vid in selected]
             missing = [p for p in styled_paths if not os.path.isfile(p)]
             if missing:

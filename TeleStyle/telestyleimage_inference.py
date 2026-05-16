@@ -125,6 +125,9 @@ if __name__ == "__main__":
     all_frames = []
     for _, scene_iter in groupby(all_raw, key=lambda f: f.parent.parent):
         non_masked = [f for f in scene_iter if not f.stem.endswith("masked")]
+        if len(non_masked) > 150:
+            print(f"Skipping scene {non_masked[0].parent.parent.name} ({len(non_masked)} images)")
+            continue
         all_frames.extend(non_masked[::5])
     total = len(all_frames)
     print(f"Found {total} frames under {dataset_root} (every 5th per scene, from {len(all_raw)} total)")
