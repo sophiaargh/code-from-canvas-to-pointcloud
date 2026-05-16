@@ -2,7 +2,7 @@
 #SBATCH --job-name=telestyle_inference
 #SBATCH --output=logs/telestyle_%j.log
 #SBATCH --error=logs/telestyle_%j.err
-#SBATCH --time=10:00:00
+#SBATCH --time=24:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
@@ -21,11 +21,11 @@ export OMP_NUM_THREADS=8
 SCRIPT_DIR=$SLURM_SUBMIT_DIR
 
 source "${HOME}/miniconda3/etc/profile.d/conda.sh"
-conda activate telestyle
+conda activate visint
 
 # TODO: choose style — Camille: Watercolor, Sophia: oil_painting, Quentin: impressionism, Emilien: engraving
 # style names should match the file names in styles/ (without extension), e.g. "watercolor" for "watercolor.jpg"
-STYLE="watercolor"
+STYLE="impressionism"
 DATASET_ROOT="$SHARED_SCRATCH_DIR/BlendedMVS/renamed"
 SAVE_DIR="$SHARED_SCRATCH_DIR/BlendedMVS/telestyle_output"
 HOME_BACKUP_DIR="$HOME/telestyle_output"

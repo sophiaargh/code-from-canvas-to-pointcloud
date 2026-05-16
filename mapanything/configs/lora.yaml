@@ -1,0 +1,30 @@
+# LoRA adapter configuration for MapAnything style-agnostic fine-tuning.
+# Referenced by train_lora.py via CLI args; values here match the defaults.
+
+model:
+  base_checkpoint: facebook/map-anything
+
+lora:
+  rank: 8
+  alpha: 16.0
+  dropout: 0.05
+  include_mlp: false
+  # target_modules: null  # null = auto-detect from model
+
+dataset:
+  style_name: impressionism
+  styled_root: /scratch/izar/silly/BlendedMVS/telestyle_output
+  dataset_root: /scratch/izar/silly/BlendedMVS/renamed
+  # dataset_metadata_dir: null  # defaults to dataset_root/../mapanything_dataset_metadata
+  num_views: 2
+  num_workers: 4
+
+training:
+  lr: 1.0e-4
+  weight_decay: 0.05
+  batch_size: 4
+  max_steps: 5000
+  save_every: 500
+  seed: 42
+  use_amp: true
+  criterion: "ConfLoss(Regr3D(L2Loss(), norm_mode='?avg_dis', gt_scale=False, loss_in_log=True), alpha=0.2)"

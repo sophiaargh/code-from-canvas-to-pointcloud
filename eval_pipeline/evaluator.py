@@ -133,13 +133,24 @@ def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
 # --- Evaluator class ---
 
 class Evaluator:
-    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results"):
+    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results",
+                 styled_root=None, style_name=None):
         self.model = model
         self.device = device
         self.baseline_name = baseline_name
         self.max_pts = max_pts
         self.out_dir = out_dir
+        self.styled_root = styled_root
+        self.style_name = style_name
         os.makedirs(self.out_dir, exist_ok=True)
+
+    def _styled_image_path(self, scene_name, vid):
+        if self.styled_root and self.style_name:
+            return os.path.join(
+                self.styled_root, self.style_name, scene_name,
+                "blended_images", f"{vid:08d}_result.png",
+            )
+        return None
 
     def evaluate_scene(self, scene_dir):
         blended_dir = os.path.join(scene_dir, "blended_images")
@@ -160,11 +171,22 @@ class Evaluator:
         available = sorted(set(available))
         if not available:
             return None
-        
+
         # select every 5th view (5, 10, 15, ...) from the available set
         selected = [vid for vid in available if vid >= 5 and (vid % 5) == 0]
         selected = selected[:5]
-        image_paths = [os.path.join(blended_dir, f"{vid:08d}.jpg") for vid in selected]
+        scene_name = os.path.basename(scene_dir)
+        # In styled mode, skip scenes where any selected view is missing a styled image.
+        # Falling back to original photos would silently corrupt the comparison.
+        if self.styled_root and self.style_name:
+            styled_paths = [self._styled_image_path(scene_name, vid) for vid in selected]
+            missing = [p for p in styled_paths if not os.path.isfile(p)]
+            if missing:
+                print(f"  [skip] {scene_name}: {len(missing)}/{len(selected)} styled views missing", flush=True)
+                return None
+            image_paths = styled_paths
+        else:
+            image_paths = [os.path.join(blended_dir, f"{vid:08d}.jpg") for vid in selected]
         gt_depth_paths = [os.path.join(depth_dir, f"{vid:08d}.pfm") for vid in selected]
 
         views = load_images(image_paths, resolution_set=518, norm_type="dinov2", patch_size=14)

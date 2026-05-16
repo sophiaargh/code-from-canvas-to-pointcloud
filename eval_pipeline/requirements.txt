@@ -12,3 +12,6 @@ safetensors==0.7.0
 torch==2.5.1
 torchvision==0.20.1
 uniception==0.1.7
+peft #for LoRA
+trimesh #for LoRA
+plyfile #for LoRA
