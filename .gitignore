@@ -2,3 +2,5 @@
 __pycache__/
 *.out
 *.err
+eval_pipeline/mapanything/*
+eval_pipeline/logs/*

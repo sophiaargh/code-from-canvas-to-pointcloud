@@ -145,28 +145,52 @@ class Evaluator:
         blended_dir = os.path.join(scene_dir, "blended_images")
         depth_dir = os.path.join(scene_dir, "rendered_depth_maps")
         if not os.path.isdir(blended_dir) or not os.path.isdir(depth_dir):
+            print("Could not find scene !")
             return None
 
         # gather available ids that have both image and depth
         available = []
+
         for fn in os.listdir(blended_dir):
-            m = re.match(r"(\d{8})\.jpg$", fn)
+            m = re.match(r"(\d{8})(?:_result)?\.(jpg|png)$", fn)
             if not m:
                 continue
+
             vid = int(m.group(1))
             depth_path = os.path.join(depth_dir, f"{vid:08d}.pfm")
+
             if os.path.exists(depth_path):
-                available.append(vid)
-        available = sorted(set(available))
+                available.append((vid, fn))
+
+        available = sorted(available, key=lambda x: x[0])
         if not available:
+            print("Could not find scene !")
             return None
         
-        # select every 5th view (5, 10, 15, ...) from the available set
-        selected = [vid for vid in available if vid >= 5 and (vid % 5) == 0]
-        selected = selected[:5]
-        image_paths = [os.path.join(blended_dir, f"{vid:08d}.jpg") for vid in selected]
-        gt_depth_paths = [os.path.join(depth_dir, f"{vid:08d}.pfm") for vid in selected]
+        # If using the original renamed dataset, subsample every 5th frame.
+        # Otherwise the dataset is already subsampled.
+        if "renamed" in scene_dir:
+            selected = [(vid, fn) for vid, fn in available if vid >= 5 and (vid % 5) == 0]
+        else:
+            selected = available
 
+        selected = selected[:5]
+
+        if not selected:
+            print(f"No valid selected views in {scene_dir}")
+            return None
+    
+        image_paths = [
+            os.path.join(blended_dir, fn)
+            for vid, fn in selected
+        ]
+
+        gt_depth_paths = [
+            os.path.join(depth_dir, f"{vid:08d}.pfm")
+            for vid, fn in selected
+        ]
+
+        selected_ids = [vid for vid, fn in selected]
         views = load_images(image_paths, resolution_set=518, norm_type="dinov2", patch_size=14)
         with torch.no_grad():
             predictions = infer(self.model, views)
@@ -181,10 +205,11 @@ class Evaluator:
             if m is not None:
                 per_view.append(m)
         if not per_view:
+            print("not per_view")
             return None
         abs_rel_scene = float(np.mean([m["AbsRel"] for m in per_view]))
         rmse_scene    = float(np.mean([m["RMSE"]   for m in per_view]))
-        pcd_metrics = evaluate_pointcloud(predictions, scene_dir, selected, self.max_pts)
+        pcd_metrics = evaluate_pointcloud(predictions, scene_dir, selected_ids, self.max_pts)
 
         row = {
             "scene": os.path.basename(scene_dir),
