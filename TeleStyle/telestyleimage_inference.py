@@ -105,12 +105,16 @@ if __name__ == "__main__":
     parser.add_argument("--style", required=True, help="Path to style reference image")
     parser.add_argument("--dataset-root", required=True, help="Path to BlendedMVS root folder")
     parser.add_argument("--save-dir", required=True, help="Path to output directory")
+    parser.add_argument("--home-backup-dir", default=None, help="Home directory mirror for backup copies")
     args = parser.parse_args()
+
+    import shutil
 
     style_ref = args.style
     dataset_root = Path(args.dataset_root)
     style_name = Path(style_ref).stem
     save_dir = Path(args.save_dir) / style_name
+    home_backup_dir = Path(args.home_backup_dir) / style_name if args.home_backup_dir else None
     style_img = Image.open(style_ref).convert("RGB")
 
     prompt = 'Style Transfer the style of Figure 2 to Figure 1, and keep the content and characteristics of Figure 1.'
@@ -121,6 +125,9 @@ if __name__ == "__main__":
     all_frames = []
     for _, scene_iter in groupby(all_raw, key=lambda f: f.parent.parent):
         non_masked = [f for f in scene_iter if not f.stem.endswith("masked")]
+        if len(non_masked) > 150:
+            print(f"Skipping scene {non_masked[0].parent.parent.name} ({len(non_masked)} images)")
+            continue
         all_frames.extend(non_masked[::5])
     total = len(all_frames)
     print(f"Found {total} frames under {dataset_root} (every 5th per scene, from {len(all_raw)} total)")
@@ -148,6 +155,10 @@ if __name__ == "__main__":
             )
 
         generated_image.save(out_path)
+        if home_backup_dir is not None:
+            home_out = home_backup_dir / rel.parent / (rel.stem + "_result.png")
+            home_out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(out_path, home_out)
         done += 1
         print(f"[{done + skipped}/{total}] saved {out_path}")
 
