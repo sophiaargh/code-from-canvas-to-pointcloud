@@ -22,7 +22,7 @@ cd $SCRIPT_DIR
 
 # use "photographs" for the original path, else use the wanted style:
 baseline="photographs" # or ex. "engraving"
-max_scenes=2
+max_scenes=100
 
 if [ "$baseline" = "photographs" ]; then
     # original images

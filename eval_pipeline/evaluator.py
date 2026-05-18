@@ -227,15 +227,15 @@ class Evaluator:
         scene_dirs = [d for d in os.listdir(data_dir)
               if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))]
 
-        # count valid image files in blended_images (matches existing regex used later)
+        # count valid image files in blended_images 
         def _count_blended_images(scene):
             blended = os.path.join(data_dir, scene, "blended_images")
             return len([name for name in os.listdir(blended) if os.path.isfile(os.path.join(blended, name))])
 
-        # keep only scenes with fewer than 150 images if original or 30 images if stylized
+        # keep only scenes with fewer than 150 images (300 because there are the masked images in the original folder) if original or 30 images if stylized
         
-        if "renamed" in scene_dirs[0]:
-            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 150])
+        if "photographs" in self.baseline_name:
+            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 300])
         else:
             scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 30])
 
