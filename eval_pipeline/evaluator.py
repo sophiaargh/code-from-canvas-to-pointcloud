@@ -174,7 +174,7 @@ class Evaluator:
         else:
             selected = available
 
-        selected = selected[:5]
+        selected = selected[:8]
 
         if not selected:
             print(f"No valid selected views in {scene_dir}")
@@ -224,12 +224,27 @@ class Evaluator:
         return row
 
     def run(self, data_dir, max_scenes=None):
-        scenes = sorted(
-            d for d in os.listdir(data_dir)
-            if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))
-        )
+        scene_dirs = [d for d in os.listdir(data_dir)
+              if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))]
+
+        # count valid image files in blended_images (matches existing regex used later)
+        def _count_blended_images(scene):
+            blended = os.path.join(data_dir, scene, "blended_images")
+            return len([name for name in os.listdir(blended) if os.path.isfile(os.path.join(blended, name))])
+
+        # keep only scenes with fewer than 150 images if original or 30 images if stylized
+        
+        if "renamed" in scene_dirs[0]:
+            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 150])
+        else:
+            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 30])
+
+        print(f"Original number of scenes: {len(scene_dirs)}. Number of scenes kept: {len(scenes)}")
+
         if max_scenes:
             scenes = scenes[:max_scenes]
+            print(f"Max scenes specified. Evaluating {len(scenes)} scenes")
+        
         all_rows = []
         for scene in scenes:
             scene_dir = os.path.join(data_dir, scene)
