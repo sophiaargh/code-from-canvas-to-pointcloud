@@ -23,27 +23,45 @@ export PYTHONPATH="/home/qsandoz/visual-intelligence:${PYTHONPATH}"
 
 mkdir -p logs
 
-# ---------------------------------------------------------------------------
-# Evaluation runs — uncomment ONE block at a time, then: sbatch submit_evaluate.sh
-#
-# Correct scenario (mixed): 1 styled view + rest original photos per scene.
-# This matches the actual use case of the LoRA adapter.
-#
-# Already done (all-styled, now known to be the wrong scenario):
-#   photographs.csv, baseline_impressionism.csv, lora_impressionism.csv
-# ---------------------------------------------------------------------------
-
 STYLED_ROOT=/scratch/izar/silly/BlendedMVS/telestyle_output
 LORA_FINAL=/scratch/izar/silly/lora_checkpoints/mixed_styles_gray_4views/final
 DATA_DIR=/scratch/izar/silly/BlendedMVS/renamed
 
-# --- Run 1: baseline on original photographs (already done, skip)
-# python -m eval_pipeline.runner \
-#   --data_dir $DATA_DIR \
-#   --checkpoint facebook/map-anything \
-#   --baseline_name photographs
+# ---------------------------------------------------------------------------
+# Evaluation runs — uncomment ONE block at a time, then: sbatch submit_evaluate.sh
+# ---------------------------------------------------------------------------
 
-# --- Run 4: baseline model, mixed input (4 styled + 4 original, mixed styles), grayscale ---
+# --- Baseline on original photographs (photographs_100_0blocks.csv, already done)
+# baseline="photographs"
+# max_scenes=100
+# python -m eval_pipeline.runner \
+#   --data_dir "/scratch/izar/silly/BlendedMVS/renamed/" \
+#   --checkpoint facebook/map-anything \
+#   --baseline_name "${baseline}_${max_scenes}_0blocks" \
+#   --max_scenes "$max_scenes"
+
+# --- Baseline on a single style (e.g. engraving_100_0blocks.csv, already done)
+# baseline="engraving"  # or impressionism / oil_painting / watercolor
+# max_scenes=100
+# python "./transfer_folders.py" "$baseline"
+# python -m eval_pipeline.runner \
+#   --data_dir "/scratch/izar/silly/BlendedMVS/telestyle_output/${baseline}/" \
+#   --checkpoint facebook/map-anything \
+#   --baseline_name "${baseline}_${max_scenes}_0blocks" \
+#   --max_scenes "$max_scenes"
+
+# --- Normalization experiments (example — adjust nbr and baseline as needed)
+# for nbr in 1 2 3 4 8 12 16 20 24; do
+#   python -m eval_pipeline.runner \
+#     --data_dir "/scratch/izar/silly/BlendedMVS/renamed/" \
+#     --checkpoint facebook/map-anything \
+#     --baseline_name "photographs_100_${nbr}blocks" \
+#     --max_scenes 100 \
+#     --encoder_block_prefix encoder.model.blocks \
+#     --norm_num_blocks "$nbr"
+# done
+
+# --- Baseline model, mixed input (4 styled + 4 original, grayscale) ---
 python -m eval_pipeline.runner \
   --data_dir $DATA_DIR \
   --checkpoint facebook/map-anything \
@@ -54,7 +72,7 @@ python -m eval_pipeline.runner \
   --grayscale \
   --baseline_name mixed_baseline_gray_4_training_views
 
-# --- Run 5: LoRA model, mixed input (4 styled + 4 original, mixed styles), grayscale ---
+# --- LoRA model, mixed input (4 styled + 4 original, grayscale) ---
 python -m eval_pipeline.runner \
   --data_dir $DATA_DIR \
   --checkpoint facebook/map-anything \

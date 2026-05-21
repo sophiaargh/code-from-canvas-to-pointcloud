@@ -164,40 +164,57 @@ class Evaluator:
         blended_dir = os.path.join(scene_dir, "blended_images")
         depth_dir = os.path.join(scene_dir, "rendered_depth_maps")
         if not os.path.isdir(blended_dir) or not os.path.isdir(depth_dir):
+            print("Could not find scene !")
             return None
 
         # gather available ids that have both image and depth
         available = []
+
         for fn in os.listdir(blended_dir):
-            m = re.match(r"(\d{8})\.jpg$", fn)
+            m = re.match(r"(\d{8})(?:_result)?\.(jpg|png)$", fn)
             if not m:
                 continue
+
             vid = int(m.group(1))
             depth_path = os.path.join(depth_dir, f"{vid:08d}.pfm")
+
             if os.path.exists(depth_path):
-                available.append(vid)
-        available = sorted(set(available))
+                available.append((vid, fn))
+
+        available = sorted(available, key=lambda x: x[0])
         if not available:
+            print("Could not find scene !")
             return None
 
-        # pick up to 8 evenly-spaced frames from the sorted available list
-        stride = max(1, len(available) // 8)
-        selected = available[::stride][:8]
+        # If using the original renamed dataset, subsample every 5th frame.
+        # Otherwise the dataset is already subsampled.
+        if "renamed" in scene_dir:
+            selected = [(vid, fn) for vid, fn in available if vid >= 5 and (vid % 5) == 0]
+        else:
+            selected = available
+        selected = selected[:8]
+
+        if not selected:
+            print(f"No valid selected views in {scene_dir}")
+            return None
+
         scene_name = os.path.basename(scene_dir)
+        # selected_ids: plain int list for mixed-mode logic and pointcloud eval
+        selected_ids = [vid for vid, fn in selected]
+        available_vids = [vid for vid, fn in available]
 
         if self.mixed:
             # Mixed mode: up to n_styled views replaced with styled images from random styles.
-            # For each selected vid, discover which styles have a rendered counterpart.
             vid_to_styles = {
                 vid: self._get_available_styles(scene_name, vid)
-                for vid in selected
+                for vid in selected_ids
             }
             styled_candidates = [vid for vid, styles in vid_to_styles.items() if styles]
-            # Fallback: scan all available frames for styled counterparts not in selected.
+            # Fallback: scan all available frames for styled counterparts not in selected_ids.
             if len(styled_candidates) < self.n_styled:
                 extra_vid_to_styles = {
                     vid: self._get_available_styles(scene_name, vid)
-                    for vid in available
+                    for vid in available_vids
                     if vid not in vid_to_styles
                 }
                 extras = [vid for vid, styles in extra_vid_to_styles.items() if styles]
@@ -206,12 +223,12 @@ class Evaluator:
                         break
                     styled_candidates.append(vid)
                     vid_to_styles[vid] = extra_vid_to_styles[vid]
-                    if vid not in selected:
+                    if vid not in selected_ids:
                         # drop the last non-styled frame to keep total at 8
-                        non_styled = [v for v in reversed(selected) if v not in styled_candidates]
+                        non_styled = [v for v in reversed(selected_ids) if v not in styled_candidates]
                         if non_styled:
-                            selected.remove(non_styled[0])
-                        selected.append(vid)
+                            selected_ids.remove(non_styled[0])
+                        selected_ids.append(vid)
 
             if not styled_candidates:
                 print(f"  [skip] {scene_name}: no styled frames found for mixed evaluation", flush=True)
@@ -226,7 +243,7 @@ class Evaluator:
                 vid: rng.choice(vid_to_styles[vid]) for vid in chosen
             }
             image_paths = []
-            for vid in selected:
+            for vid in selected_ids:
                 if vid in chosen_style:
                     style = chosen_style[vid]
                     image_paths.append(os.path.join(
@@ -236,23 +253,24 @@ class Evaluator:
                 else:
                     image_paths.append(os.path.join(blended_dir, f"{vid:08d}.jpg"))
             style_summary = ", ".join(f"{vid:08d}:{chosen_style[vid]}" for vid in chosen)
-            print(f"  mixed: {n} styled ({style_summary}) + {len(selected)-n} original", flush=True)
+            print(f"  mixed: {n} styled ({style_summary}) + {len(selected_ids)-n} original", flush=True)
         elif self.styled_root and self.style_names:
             # Styled-only mode: all views must be styled (uses first style).
             style = self.style_names[0]
             styled_paths = [
                 os.path.join(self.styled_root, style, scene_name,
                              "blended_images", f"{vid:08d}_result.png")
-                for vid in selected
+                for vid in selected_ids
             ]
             missing = [p for p in styled_paths if not os.path.isfile(p)]
             if missing:
-                print(f"  [skip] {scene_name}: {len(missing)}/{len(selected)} styled views missing", flush=True)
+                print(f"  [skip] {scene_name}: {len(missing)}/{len(selected_ids)} styled views missing", flush=True)
                 return None
             image_paths = styled_paths
         else:
-            image_paths = [os.path.join(blended_dir, f"{vid:08d}.jpg") for vid in selected]
-        gt_depth_paths = [os.path.join(depth_dir, f"{vid:08d}.pfm") for vid in selected]
+            image_paths = [os.path.join(blended_dir, fn) for vid, fn in selected]
+
+        gt_depth_paths = [os.path.join(depth_dir, f"{vid:08d}.pfm") for vid in selected_ids]
 
         views = load_images(image_paths, resolution_set=518, norm_type="dinov2", patch_size=14,
                             grayscale=self.grayscale)
@@ -269,10 +287,11 @@ class Evaluator:
             if m is not None:
                 per_view.append(m)
         if not per_view:
+            print("not per_view")
             return None
         abs_rel_scene = float(np.mean([m["AbsRel"] for m in per_view]))
         rmse_scene    = float(np.mean([m["RMSE"]   for m in per_view]))
-        pcd_metrics = evaluate_pointcloud(predictions, scene_dir, selected, self.max_pts)
+        pcd_metrics = evaluate_pointcloud(predictions, scene_dir, selected_ids, self.max_pts)
 
         row = {
             "scene": os.path.basename(scene_dir),
@@ -287,12 +306,27 @@ class Evaluator:
         return row
 
     def run(self, data_dir, max_scenes=None):
-        scenes = sorted(
-            d for d in os.listdir(data_dir)
-            if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))
-        )
+        scene_dirs = [d for d in os.listdir(data_dir)
+              if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))]
+
+        # count valid image files in blended_images 
+        def _count_blended_images(scene):
+            blended = os.path.join(data_dir, scene, "blended_images")
+            return len([name for name in os.listdir(blended) if os.path.isfile(os.path.join(blended, name))])
+
+        # keep only scenes with fewer than 150 images (300 because there are the masked images in the original folder) if original or 30 images if stylized
+        
+        if "photographs" in self.baseline_name:
+            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 300])
+        else:
+            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 30])
+
+        print(f"Original number of scenes: {len(scene_dirs)}. Number of scenes kept: {len(scenes)}")
+
         if max_scenes:
             scenes = scenes[:max_scenes]
+            print(f"Max scenes specified. Evaluating {len(scenes)} scenes")
+        
         all_rows = []
         for scene in scenes:
             scene_dir = os.path.join(data_dir, scene)

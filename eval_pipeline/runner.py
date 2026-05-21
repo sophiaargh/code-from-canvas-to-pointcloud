@@ -24,6 +24,8 @@ def get_args():
     p.add_argument("--out_dir", type=str, default="evaluation_results")
     p.add_argument("--grayscale", action="store_true",
                    help="Convert all images to grayscale-RGB before model inference")
+    p.add_argument("--encoder_block_prefix", type=str, default=None)
+    p.add_argument("--norm_num_blocks",      type=int, default=None)
     return p.parse_args()
 
 
@@ -32,7 +34,12 @@ def main():
     if args.lora_path:
         model, device = load_with_lora(args.lora_path, base_checkpoint=args.checkpoint)
     else:
-        model, device = get_model(args.checkpoint)
+        model, device = get_model(
+            args.checkpoint,
+            encoder_block_prefix=args.encoder_block_prefix,
+            norm_num_blocks=args.norm_num_blocks,
+        )
+    print(f"Evaluating: {args.baseline_name} on {args.max_scenes} scenes, output in: {args.out_dir}")
     evaluator = Evaluator(model=model, device=device,
                           baseline_name=args.baseline_name, max_pts=args.max_pts,
                           out_dir=args.out_dir,
