@@ -154,6 +154,7 @@ def load_images(
     bayer_format=False,
     resolution_set=518,
     stride=1,
+    grayscale=False,
 ):
     """
     Open and convert all images in a list or folder to proper input format for model
@@ -322,6 +323,10 @@ def load_images(
     for path, img, W1, H1 in loaded_images:
         # Resize and crop the image to the target size
         img = crop_resize_if_necessary(img, resolution=target_size)[0]
+
+        if grayscale:
+            gray = img.convert("L")
+            img = PIL.Image.merge("RGB", (gray, gray, gray))
 
         # Normalize image and add it to the list
         W2, H2 = img.size

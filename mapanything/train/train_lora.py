@@ -30,7 +30,7 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
-from mapanything.datasets.wai.blendedmvs_styled import BlendedMVSStyled
+from mapanything.datasets.wai.blendedmvs_mixed_styles import BlendedMVSMixedStyles
 from mapanything.models.mapanything.lora_adapter import apply_lora, probe_target_modules, save_lora_weights
 from mapanything.train.losses import *  # noqa — exposes ConfLoss, Regr3D, L2Loss, etc.
 from mapanything.utils.inference import loss_of_one_batch_multi_view
@@ -67,8 +67,13 @@ def get_args():
                         "If omitted, auto-detected from model.")
 
     # Dataset
-    p.add_argument("--style_name", default="impressionism",
-                   help="Name of the artistic style (must match TeleStyle output subdirectory)")
+    p.add_argument("--style_names", nargs="+",
+                   default=["engraving", "impressionism", "oil_painting", "watercolor"],
+                   help="Artistic style names to sample from (must match TeleStyle output subdirectories)")
+    p.add_argument("--n_styled", type=int, default=2,
+                   help="Number of views per sample to replace with styled images")
+    p.add_argument("--grayscale", action="store_true",
+                   help="Convert all images to grayscale-RGB before passing to the model")
     p.add_argument("--styled_root",
                    default="/scratch/izar/silly/BlendedMVS/telestyle_output",
                    help="Root directory containing per-style TeleStyle output")
@@ -77,6 +82,9 @@ def get_args():
                    help="Root directory of the original BlendedMVS dataset")
     p.add_argument("--num_views", type=int, default=2,
                    help="Number of views per training sample")
+    p.add_argument("--resolution", type=int, nargs=2, default=None, metavar=("W", "H"),
+                   help="Training image resolution as W H (must be multiples of 14). "
+                        f"Defaults to {_DEFAULT_RESOLUTION}.")
     p.add_argument("--num_workers", type=int, default=4)
 
     # Training
@@ -90,6 +98,8 @@ def get_args():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--use_amp", action="store_true",
                    help="Use automatic mixed precision (bfloat16)")
+    p.add_argument("--gradient_checkpointing", action="store_true",
+                   help="Enable gradient checkpointing to reduce activation memory at the cost of ~30%% slower training")
     p.add_argument("--criterion", default=_DEFAULT_CRITERION,
                    help="Loss criterion expression (eval'd in the losses module namespace)")
 
@@ -101,16 +111,19 @@ def get_args():
 # ---------------------------------------------------------------------------
 
 def build_styled_dataset(args):
-    dataset = BlendedMVSStyled(
+    resolution = tuple(args.resolution) if args.resolution else _DEFAULT_RESOLUTION
+    dataset = BlendedMVSMixedStyles(
         ROOT=args.dataset_root,
         split="train",
         num_views=args.num_views,
-        resolution=_DEFAULT_RESOLUTION,
+        resolution=resolution,
         transform="colorjitter",
         data_norm_type=_DEFAULT_DATA_NORM,
         aug_crop=16,
-        style_name=args.style_name,
+        style_names=args.style_names,
+        n_styled=args.n_styled,
         styled_root=args.styled_root,
+        grayscale=args.grayscale,
     )
     return dataset
 
@@ -183,6 +196,14 @@ def main():
         dropout=args.lora_dropout,
     )
     model.to(device)
+
+    if args.gradient_checkpointing:
+        # Call through to the inner model directly — this PEFT version does not
+        # expose these methods via its __getattr__ chain.
+        inner = model.base_model.model
+        inner.enable_input_require_grads()
+        inner.gradient_checkpointing_enable()
+        print("Gradient checkpointing enabled")
 
     # ---- Loss criterion ----
     criterion = eval(args.criterion).to(device)

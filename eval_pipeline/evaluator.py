@@ -1,3 +1,4 @@
+import hashlib
 import os
 import csv
 import numpy as np
@@ -134,23 +135,30 @@ def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
 
 class Evaluator:
     def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results",
-                 styled_root=None, style_name=None):
+                 styled_root=None, style_names=None, mixed=False, grayscale=False, n_styled=4):
         self.model = model
         self.device = device
         self.baseline_name = baseline_name
         self.max_pts = max_pts
         self.out_dir = out_dir
         self.styled_root = styled_root
-        self.style_name = style_name
+        self.style_names = style_names or []
+        self.mixed = mixed
+        self.grayscale = grayscale
+        self.n_styled = n_styled
         os.makedirs(self.out_dir, exist_ok=True)
 
-    def _styled_image_path(self, scene_name, vid):
-        if self.styled_root and self.style_name:
-            return os.path.join(
-                self.styled_root, self.style_name, scene_name,
+    def _get_available_styles(self, scene_name, vid):
+        """Return the list of styles that have a styled image for this (scene, vid) pair."""
+        available = []
+        for style in self.style_names:
+            path = os.path.join(
+                self.styled_root, style, scene_name,
                 "blended_images", f"{vid:08d}_result.png",
             )
-        return None
+            if os.path.isfile(path):
+                available.append(style)
+        return available
 
     def evaluate_scene(self, scene_dir):
         blended_dir = os.path.join(scene_dir, "blended_images")
@@ -172,15 +180,71 @@ class Evaluator:
         if not available:
             return None
 
-        # select every 5th view (5, 10, 15, ...) from the available set
-        selected = [vid for vid in available if vid >= 5 and (vid % 5) == 0]
-        # limit number of selected views to avoid OOMs
-        selected = selected[:8]
+        # pick up to 8 evenly-spaced frames from the sorted available list
+        stride = max(1, len(available) // 8)
+        selected = available[::stride][:8]
         scene_name = os.path.basename(scene_dir)
-        if self.styled_root and self.style_name:
-            # In styled mode, skip scenes where any selected view is missing a styled image.
-            # Falling back to original photos would silently corrupt the comparison.
-            styled_paths = [self._styled_image_path(scene_name, vid) for vid in selected]
+
+        if self.mixed:
+            # Mixed mode: up to n_styled views replaced with styled images from random styles.
+            # For each selected vid, discover which styles have a rendered counterpart.
+            vid_to_styles = {
+                vid: self._get_available_styles(scene_name, vid)
+                for vid in selected
+            }
+            styled_candidates = [vid for vid, styles in vid_to_styles.items() if styles]
+            # Fallback: scan all available frames for styled counterparts not in selected.
+            if len(styled_candidates) < self.n_styled:
+                extra_vid_to_styles = {
+                    vid: self._get_available_styles(scene_name, vid)
+                    for vid in available
+                    if vid not in vid_to_styles
+                }
+                extras = [vid for vid, styles in extra_vid_to_styles.items() if styles]
+                for vid in extras:
+                    if len(styled_candidates) >= self.n_styled:
+                        break
+                    styled_candidates.append(vid)
+                    vid_to_styles[vid] = extra_vid_to_styles[vid]
+                    if vid not in selected:
+                        # drop the last non-styled frame to keep total at 8
+                        non_styled = [v for v in reversed(selected) if v not in styled_candidates]
+                        if non_styled:
+                            selected.remove(non_styled[0])
+                        selected.append(vid)
+
+            if not styled_candidates:
+                print(f"  [skip] {scene_name}: no styled frames found for mixed evaluation", flush=True)
+                return None
+
+            # Pick up to n_styled vids; assign each a style deterministically from scene name.
+            n = min(self.n_styled, len(styled_candidates))
+            chosen = styled_candidates[:n]
+            scene_seed = int(hashlib.md5(scene_name.encode()).hexdigest(), 16) % (2 ** 32)
+            rng = np.random.default_rng(scene_seed)
+            chosen_style = {
+                vid: rng.choice(vid_to_styles[vid]) for vid in chosen
+            }
+            image_paths = []
+            for vid in selected:
+                if vid in chosen_style:
+                    style = chosen_style[vid]
+                    image_paths.append(os.path.join(
+                        self.styled_root, style, scene_name,
+                        "blended_images", f"{vid:08d}_result.png",
+                    ))
+                else:
+                    image_paths.append(os.path.join(blended_dir, f"{vid:08d}.jpg"))
+            style_summary = ", ".join(f"{vid:08d}:{chosen_style[vid]}" for vid in chosen)
+            print(f"  mixed: {n} styled ({style_summary}) + {len(selected)-n} original", flush=True)
+        elif self.styled_root and self.style_names:
+            # Styled-only mode: all views must be styled (uses first style).
+            style = self.style_names[0]
+            styled_paths = [
+                os.path.join(self.styled_root, style, scene_name,
+                             "blended_images", f"{vid:08d}_result.png")
+                for vid in selected
+            ]
             missing = [p for p in styled_paths if not os.path.isfile(p)]
             if missing:
                 print(f"  [skip] {scene_name}: {len(missing)}/{len(selected)} styled views missing", flush=True)
@@ -190,7 +254,8 @@ class Evaluator:
             image_paths = [os.path.join(blended_dir, f"{vid:08d}.jpg") for vid in selected]
         gt_depth_paths = [os.path.join(depth_dir, f"{vid:08d}.pfm") for vid in selected]
 
-        views = load_images(image_paths, resolution_set=518, norm_type="dinov2", patch_size=14)
+        views = load_images(image_paths, resolution_set=518, norm_type="dinov2", patch_size=14,
+                            grayscale=self.grayscale)
         with torch.no_grad():
             predictions = infer(self.model, views)
 

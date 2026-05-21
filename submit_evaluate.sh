@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=evaluate
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --account=cs-503
 #SBATCH --qos=cs-503
 #SBATCH --gres=gpu:1
@@ -24,37 +24,44 @@ export PYTHONPATH="/home/qsandoz/visual-intelligence:${PYTHONPATH}"
 mkdir -p logs
 
 # ---------------------------------------------------------------------------
-# Three-way evaluation to assess LoRA style-agnosticism.
-# Run 1 (already done): baseline on original photos → upper bound
-# Run 2: baseline on styled images → shows degradation from style
-# Run 3: LoRA model on styled images → shows recovery
-
-# Uncomment ONE block at a time and submit with: sbatch submit_evaluate.sh
+# Evaluation runs — uncomment ONE block at a time, then: sbatch submit_evaluate.sh
+#
+# Correct scenario (mixed): 1 styled view + rest original photos per scene.
+# This matches the actual use case of the LoRA adapter.
+#
+# Already done (all-styled, now known to be the wrong scenario):
+#   photographs.csv, baseline_impressionism.csv, lora_impressionism.csv
 # ---------------------------------------------------------------------------
 
 STYLED_ROOT=/scratch/izar/silly/BlendedMVS/telestyle_output
-LORA_FINAL=/scratch/izar/silly/lora_checkpoints/impressionism/final
+LORA_FINAL=/scratch/izar/silly/lora_checkpoints/mixed_styles_gray_4views/final
 DATA_DIR=/scratch/izar/silly/BlendedMVS/renamed
 
-# --- Run 1: baseline on original photographs (already done) ---
+# --- Run 1: baseline on original photographs (already done, skip)
 # python -m eval_pipeline.runner \
 #   --data_dir $DATA_DIR \
 #   --checkpoint facebook/map-anything \
 #   --baseline_name photographs
 
-# --- Run 2: baseline on impressionism styled images ---
-#python -m eval_pipeline.runner \
-#  --data_dir $DATA_DIR \
-#  --checkpoint facebook/map-anything \
-#  --styled_root $STYLED_ROOT \
-#  --style_name impressionism \
-#  --baseline_name baseline_impressionism
+# --- Run 4: baseline model, mixed input (4 styled + 4 original, mixed styles), grayscale ---
+python -m eval_pipeline.runner \
+  --data_dir $DATA_DIR \
+  --checkpoint facebook/map-anything \
+  --styled_root $STYLED_ROOT \
+  --style_names engraving impressionism oil_painting watercolor \
+  --n_styled 4 \
+  --mixed \
+  --grayscale \
+  --baseline_name mixed_baseline_gray_4_training_views
 
-# --- Run 3: LoRA model on impressionism styled images ---
+# --- Run 5: LoRA model, mixed input (4 styled + 4 original, mixed styles), grayscale ---
 python -m eval_pipeline.runner \
   --data_dir $DATA_DIR \
   --checkpoint facebook/map-anything \
   --lora_path $LORA_FINAL \
   --styled_root $STYLED_ROOT \
-  --style_name impressionism \
-  --baseline_name lora_impressionism
+  --style_names engraving impressionism oil_painting watercolor \
+  --n_styled 4 \
+  --mixed \
+  --grayscale \
+  --baseline_name mixed_lora_gray_4_training_views

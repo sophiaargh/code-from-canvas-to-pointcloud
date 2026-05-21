@@ -31,7 +31,7 @@ STYLE="impressionism"
 
 DATASET_ROOT="$SHARED_SCRATCH_DIR/BlendedMVS/renamed"
 STYLED_ROOT="$SHARED_SCRATCH_DIR/BlendedMVS/telestyle_output"
-LORA_OUT_DIR="$SHARED_SCRATCH_DIR/lora_checkpoints/${STYLE}"
+LORA_OUT_DIR="$SHARED_SCRATCH_DIR/lora_checkpoints/mixed_styles_gray_4views"
 
 mkdir -p "$LORA_OUT_DIR"
 mkdir -p "$SCRIPT_DIR/logs"
@@ -45,7 +45,8 @@ cd "/home/qsandoz/visual-intelligence"
 python -m mapanything.train.train_lora \
     --base_checkpoint facebook/map-anything \
     --lora_out_dir "$LORA_OUT_DIR" \
-    --style_name "$STYLE" \
+    --style_names engraving impressionism oil_painting watercolor \
+    --n_styled 2 \
     --styled_root "$STYLED_ROOT" \
     --dataset_root "$DATASET_ROOT" \
     --lora_rank 8 \
@@ -53,8 +54,11 @@ python -m mapanything.train.train_lora \
     --lora_dropout 0.05 \
     --lr 1e-4 \
     --batch_size 1 \
-    --num_views 2 \
+    --num_views 4 \
     --num_workers 8 \
     --max_steps 5000 \
     --save_every 500 \
-    --use_amp
+    --use_amp \
+    --gradient_checkpointing \
+    --grayscale \
+    --resolution 392 280
