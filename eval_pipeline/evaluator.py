@@ -133,12 +133,13 @@ def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
 # --- Evaluator class ---
 
 class Evaluator:
-    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results"):
+    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results", max_scenes=None):
         self.model = model
         self.device = device
         self.baseline_name = baseline_name
         self.max_pts = max_pts
         self.out_dir = out_dir
+        self.max_scenes = max_scenes
         os.makedirs(self.out_dir, exist_ok=True)
 
     def evaluate_scene(self, scene_dir):
@@ -174,7 +175,7 @@ class Evaluator:
         else:
             selected = available
 
-        selected = selected[:5]
+        selected = selected[:8]
 
         if not selected:
             print(f"No valid selected views in {scene_dir}")
@@ -223,13 +224,28 @@ class Evaluator:
         }
         return row
 
-    def run(self, data_dir, max_scenes=None):
-        scenes = sorted(
-            d for d in os.listdir(data_dir)
-            if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))
-        )
-        if max_scenes:
-            scenes = scenes[:max_scenes]
+    def run(self, data_dir):
+        scene_dirs = [d for d in os.listdir(data_dir)
+              if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))]
+
+        # count valid image files in blended_images 
+        def _count_blended_images(scene):
+            blended = os.path.join(data_dir, scene, "blended_images")
+            return len([name for name in os.listdir(blended) if os.path.isfile(os.path.join(blended, name))])
+
+        # keep only scenes with fewer than 150 images (300 because there are the masked images in the original folder) if original or 30 images if stylized
+        
+        if "photographs" in self.baseline_name:
+            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 300])
+        else:
+            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 30])
+
+        print(f"Original number of scenes: {len(scene_dirs)}. Number of scenes kept: {len(scenes)}")
+
+        if self.max_scenes:
+            scenes = scenes[:self.max_scenes]
+            print(f"Max scenes specified. Evaluating {len(scenes)} scenes")
+        
         all_rows = []
         for scene in scenes:
             scene_dir = os.path.join(data_dir, scene)

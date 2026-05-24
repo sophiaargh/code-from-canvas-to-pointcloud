@@ -1,0 +1,5 @@
+scene,baseline,chamfer,fscore,precision,recall
+scan1,engraving,76.310261,0.052732,0.03782,0.08706
+scan6,engraving,11.641061,0.36975,0.28348,0.5315
+MEAN,engraving,43.975661,0.211241,0.16065,0.30928
+MEDIAN,engraving,43.975661,0.211241,0.16065,0.30928
