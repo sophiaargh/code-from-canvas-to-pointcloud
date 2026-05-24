@@ -1,0 +1,5 @@
+scene,baseline,chamfer,fscore,precision,recall
+scan1,watercolor,74.617048,0.066648,0.04736,0.11244
+scan6,watercolor,51.506286,0.054267,0.04106,0.08
+MEAN,watercolor,63.061667,0.060458,0.04421,0.09622
+MEDIAN,watercolor,63.061667,0.060458,0.04421,0.09622

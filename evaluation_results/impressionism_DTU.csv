@@ -1,0 +1,5 @@
+scene,baseline,chamfer,fscore,precision,recall
+scan1,impressionism,52.301174,0.107637,0.07846,0.17136
+scan6,impressionism,18.128946,0.176154,0.12556,0.29504
+MEAN,impressionism,35.21506,0.141896,0.10201,0.2332
+MEDIAN,impressionism,35.21506,0.141896,0.10201,0.2332
