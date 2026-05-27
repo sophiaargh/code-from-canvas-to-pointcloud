@@ -4,3 +4,7 @@ __pycache__/
 *.err
 eval_pipeline/mapanything/*
 eval_pipeline/logs/*
+logs/
+TeleStyle/logs/
+*.log
+__pycache__/
