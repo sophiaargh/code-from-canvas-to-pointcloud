@@ -21,7 +21,7 @@ def get_args():
     p.add_argument("--baseline_name", type=str, default="mapanything_eval")
     p.add_argument("--max_scenes", type=int, default=None)
     p.add_argument("--max_pts", type=int, default=50000)
-    p.add_argument("--out_dir", type=str, default="evaluation_results")
+    p.add_argument("--out_dir", type=str, default="lora/results/evaluation_results")
     p.add_argument("--grayscale", action="store_true",
                    help="Convert all images to grayscale-RGB before model inference")
     p.add_argument("--encoder_block_prefix", type=str, default=None)

@@ -41,4 +41,4 @@ python -m eval_pipeline.visualize_depth \
   --label_1         lora_mixed_gray \
   --label_2         lora_consistency \
   --grayscale \
-  --out_dir         depth_visualizations
+  --out_dir         lora/results/depth_visualizations

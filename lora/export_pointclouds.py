@@ -46,7 +46,7 @@ def get_args():
     p.add_argument("--style_names", nargs="+", default=_ALL_STYLES)
     p.add_argument("--n_styled", type=int, default=4)
     p.add_argument("--scenes", nargs="+", default=None)
-    p.add_argument("--out_dir", default="ply_exports")
+    p.add_argument("--out_dir", default="lora/results/ply_exports")
     p.add_argument("--voxel_fraction", type=float, default=0.01)
     p.add_argument("--checkpoint", default="facebook/map-anything")
     p.add_argument("--grayscale", action="store_true",

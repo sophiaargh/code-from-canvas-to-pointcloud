@@ -8,10 +8,10 @@ Setup (one-time):
   pip install open3d
 
 Transfer PLY files from cluster (run locally):
-  scp -r qsandoz@izar.epfl.ch:/home/qsandoz/visual-intelligence/ply_exports ./ply_exports
+  scp -r qsandoz@izar.epfl.ch:/home/qsandoz/visual-intelligence/lora/results/ply_exports ./ply_exports
 
 Optionally transfer metrics CSV for quality labels:
-  scp qsandoz@izar.epfl.ch:/home/qsandoz/visual-intelligence/evaluation_results/mixed_lora_gray.csv ./mixed_lora_gray.csv
+  scp qsandoz@izar.epfl.ch:/home/qsandoz/visual-intelligence/lora/results/evaluation_results/mixed_lora_gray.csv ./mixed_lora_gray.csv
 
 Usage:
   python visualize_ply.py                                      # all default scenes
@@ -76,7 +76,7 @@ def quality_tier(fscore):
 
 def get_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--ply_dir", default="ply_exports")
+    p.add_argument("--ply_dir", default="lora/results/ply_exports")
     p.add_argument("--results_csv", default=None,
                    help="Optional path to mixed_lora_gray.csv for quality tier display")
     p.add_argument("--scene", nargs="+", default=None,

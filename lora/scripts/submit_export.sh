@@ -21,7 +21,7 @@ conda activate mapanything
 
 export PYTHONPATH="/home/qsandoz/visual-intelligence:${PYTHONPATH}"
 
-mkdir -p logs ply_exports
+mkdir -p logs lora/results/ply_exports
 
 DATA_DIR=$SHARED_SCRATCH_DIR/BlendedMVS/renamed
 STYLED_ROOT=$SHARED_SCRATCH_DIR/BlendedMVS/telestyle_output

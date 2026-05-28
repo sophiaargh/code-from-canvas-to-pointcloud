@@ -134,7 +134,7 @@ def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
 # --- Evaluator class ---
 
 class Evaluator:
-    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results",
+    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="lora/results/evaluation_results",
                  styled_root=None, style_names=None, mixed=False, grayscale=False, n_styled=4):
         self.model = model
         self.device = device

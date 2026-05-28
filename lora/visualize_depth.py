@@ -182,7 +182,7 @@ def main():
     p.add_argument("--label_baseline", default="baseline")
     p.add_argument("--label_1",        default="lora_mixed_gray")
     p.add_argument("--label_2",        default="lora_consistency")
-    p.add_argument("--out_dir",        default="depth_visualizations")
+    p.add_argument("--out_dir",        default="lora/results/depth_visualizations")
     p.add_argument("--grayscale",      action="store_true")
     args = p.parse_args()
 
