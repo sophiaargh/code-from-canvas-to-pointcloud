@@ -1,0 +1,5 @@
+scene,baseline,chamfer,fscore,precision,recall
+scan1,oil_painting,78.353164,0.060173,0.04244,0.10336
+scan6,oil_painting,75.289328,0.070963,0.05514,0.09952
+MEAN,oil_painting,76.821246,0.065568,0.04879,0.10144
+MEDIAN,oil_painting,76.821246,0.065568,0.04879,0.10144

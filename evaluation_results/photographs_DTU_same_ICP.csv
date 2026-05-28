@@ -1,0 +1,5 @@
+scene,baseline,chamfer,fscore,precision,recall
+scan1,photographs,22.439237,0.188901,0.14854,0.25938
+scan6,photographs,14.606532,0.300986,0.25384,0.36964
+MEAN,photographs,18.522884,0.244943,0.20119,0.31451
+MEDIAN,photographs,18.522884,0.244943,0.20119,0.31451

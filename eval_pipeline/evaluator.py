@@ -133,12 +133,13 @@ def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
 # --- Evaluator class ---
 
 class Evaluator:
-    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results"):
+    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results", max_scenes=None):
         self.model = model
         self.device = device
         self.baseline_name = baseline_name
         self.max_pts = max_pts
         self.out_dir = out_dir
+        self.max_scenes = max_scenes
         os.makedirs(self.out_dir, exist_ok=True)
 
     def evaluate_scene(self, scene_dir):
@@ -223,7 +224,7 @@ class Evaluator:
         }
         return row
 
-    def run(self, data_dir, max_scenes=None):
+    def run(self, data_dir):
         scene_dirs = [d for d in os.listdir(data_dir)
               if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))]
 
@@ -241,8 +242,8 @@ class Evaluator:
 
         print(f"Original number of scenes: {len(scene_dirs)}. Number of scenes kept: {len(scenes)}")
 
-        if max_scenes:
-            scenes = scenes[:max_scenes]
+        if self.max_scenes:
+            scenes = scenes[:self.max_scenes]
             print(f"Max scenes specified. Evaluating {len(scenes)} scenes")
         
         all_rows = []
