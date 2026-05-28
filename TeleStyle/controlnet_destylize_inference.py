@@ -57,6 +57,7 @@ class ControlNetDestylizeInference:
         seed=123,
         num_inference_steps=20,
         strength=0.65,
+        controlnet_conditioning_scale=0.8,
         minedge=512,
         ):
         w, h = content_img.size
@@ -83,7 +84,7 @@ class ControlNetDestylizeInference:
             strength=strength,
             num_inference_steps=num_inference_steps,
             generator=generator,
-            controlnet_conditioning_scale=0.8,
+            controlnet_conditioning_scale=controlnet_conditioning_scale,
         ).images[0]
 
         return image
