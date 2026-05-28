@@ -22,14 +22,6 @@ def get_args():
                    help="Add learnable gamma/beta to each norm hook (prep for AdaIN).")
     p.add_argument("--adapter_weights",       type=str,  default=None,
                    help="Path to the saved adapter .pth file.")
-    p.add_argument("--data_dir", type=str, required=True)
-    p.add_argument("--checkpoint", type=str, default="facebook/map-anything")
-    p.add_argument("--baseline_name", type=str, default="mapanything_eval")
-    p.add_argument("--max_scenes", type=int, default=None)
-    p.add_argument("--max_pts", type=int, default=50000)
-    p.add_argument("--out_dir", type=str, default="evaluation_results")
-    p.add_argument("--encoder_block_prefix",  type=str, default=None)
-    p.add_argument("--norm_num_blocks",       type=int, default=None)
     p.add_argument("--number_stylized", type=int, default=None)
     
     return p.parse_args()
@@ -53,13 +45,10 @@ def main():
         max_pts       = args.max_pts,
         out_dir       = args.out_dir,
         modification  = args.modification,
+        max_scenes=args.max_scenes,
     )
-    print(f"Evaluating: {args.baseline_name} on {args.max_scenes} scenes, "
-          f"output in: {args.out_dir}")
-    evaluator.run(args.data_dir, max_scenes=args.max_scenes)
-    evaluator = Evaluator(model=model, device=device,
-                          baseline_name=args.baseline_name, max_pts=args.max_pts,
-                          out_dir=args.out_dir, max_scenes=args.max_scenes, modification=args.modification)
+    print(f"Evaluating: {args.baseline_name} on {args.max_scenes} scenes, output in: {args.out_dir}")
+
 
     # Additionnal evaluators: Pointclouds on sample DTU with visualization and same ICP alignment and stylization ratio
     # evaluator = DTUEvaluator(model=model, device=device,

@@ -13,3 +13,4 @@ torch==2.5.1
 torchvision==0.20.1
 uniception==0.1.7
 open3d
+plyfile
