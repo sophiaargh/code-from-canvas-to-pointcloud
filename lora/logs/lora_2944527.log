@@ -1,0 +1,69 @@
+Device: cuda
+Loading pretrained model: facebook/map-anything
+Loading pretrained dinov2_vitg14 from torch hub
+Probing target modules …
+  Auto-detected modules: ['proj', 'w3']
+trainable params: 2,834,688 || all params: 1,231,325,910 || trainable%: 0.2302
+Gradient checkpointing enabled
+Criterion: ConfLoss(Regr3D(L2Loss()))
+Building dataset …
+  Dataset size: 101 scenes
+Consistency loss enabled (λ=0.1)
+Starting LoRA training for 10000 steps …
+  step    50/10000  loss=3.2569  c_loss=0.987524  elapsed=144s
+  step   100/10000  loss=0.8770  c_loss=0.098670  elapsed=266s
+  step   150/10000  loss=0.4919  c_loss=0.423480  elapsed=389s
+  step   200/10000  loss=0.5355  c_loss=0.060082  elapsed=511s
+  step   250/10000  loss=0.3973  c_loss=0.093265  elapsed=634s
+  step   300/10000  loss=0.1929  c_loss=0.023078  elapsed=757s
+  step   350/10000  loss=-0.0517  c_loss=0.018188  elapsed=880s
+  step   400/10000  loss=-0.1873  c_loss=0.010812  elapsed=1002s
+  step   450/10000  loss=-0.2027  c_loss=0.011697  elapsed=1125s
+  step   500/10000  loss=-0.3440  c_loss=0.006155  elapsed=1247s
+  Saved LoRA checkpoint → /scratch/izar/silly/lora_checkpoints/mixed_styles_gray_consistency/step_000500
+  step   550/10000  loss=-0.5169  c_loss=0.005935  elapsed=1371s
+  step   600/10000  loss=-0.4669  c_loss=0.006215  elapsed=1493s
+  step   650/10000  loss=-0.5168  c_loss=0.005714  elapsed=1616s
+  step   700/10000  loss=-0.5182  c_loss=0.004573  elapsed=1738s
+  step   750/10000  loss=-0.5653  c_loss=0.004657  elapsed=1862s
+  step   800/10000  loss=-0.6807  c_loss=0.006069  elapsed=1984s
+  step   850/10000  loss=-0.6672  c_loss=0.004819  elapsed=2107s
+  step   900/10000  loss=-0.6683  c_loss=0.005437  elapsed=2229s
+  step   950/10000  loss=-0.7897  c_loss=0.004041  elapsed=2353s
+  step  1000/10000  loss=-0.7593  c_loss=0.004401  elapsed=2475s
+  Saved LoRA checkpoint → /scratch/izar/silly/lora_checkpoints/mixed_styles_gray_consistency/step_001000
+  step  1050/10000  loss=-0.8231  c_loss=0.005580  elapsed=2598s
+  step  1100/10000  loss=-0.8005  c_loss=0.005620  elapsed=2720s
+  step  1150/10000  loss=-0.8643  c_loss=0.007620  elapsed=2843s
+  step  1200/10000  loss=-0.9024  c_loss=0.006917  elapsed=2966s
+  step  1250/10000  loss=-0.9472  c_loss=0.005047  elapsed=3089s
+  step  1300/10000  loss=-0.9229  c_loss=0.008878  elapsed=3211s
+  step  1350/10000  loss=-0.9386  c_loss=0.006685  elapsed=3334s
+  step  1400/10000  loss=-0.9588  c_loss=0.003707  elapsed=3456s
+  step  1450/10000  loss=-0.9060  c_loss=0.006803  elapsed=3579s
+  step  1500/10000  loss=-1.0413  c_loss=0.006260  elapsed=3701s
+  Saved LoRA checkpoint → /scratch/izar/silly/lora_checkpoints/mixed_styles_gray_consistency/step_001500
+  step  1550/10000  loss=-0.9781  c_loss=0.005432  elapsed=3825s
+  step  1600/10000  loss=-1.0098  c_loss=0.003661  elapsed=3947s
+  step  1650/10000  loss=-0.9999  c_loss=0.008709  elapsed=4070s
+  step  1700/10000  loss=-1.1033  c_loss=0.005404  elapsed=4192s
+  step  1750/10000  loss=-1.0913  c_loss=0.006771  elapsed=4315s
+  step  1800/10000  loss=-1.0968  c_loss=0.008416  elapsed=4438s
+  step  1850/10000  loss=-1.0590  c_loss=0.006695  elapsed=4561s
+  step  1900/10000  loss=-1.2199  c_loss=0.004367  elapsed=4683s
+  step  1950/10000  loss=-1.2054  c_loss=0.005223  elapsed=4806s
+  step  2000/10000  loss=-1.0460  c_loss=0.011743  elapsed=4928s
+  Saved LoRA checkpoint → /scratch/izar/silly/lora_checkpoints/mixed_styles_gray_consistency/step_002000
+  step  2050/10000  loss=-1.1377  c_loss=0.006970  elapsed=5052s
+  step  2100/10000  loss=-1.1704  c_loss=0.003588  elapsed=5174s
+  step  2150/10000  loss=-1.0818  c_loss=0.005161  elapsed=5297s
+  step  2200/10000  loss=-1.2286  c_loss=0.019375  elapsed=5419s
+  step  2250/10000  loss=-1.1026  c_loss=0.007748  elapsed=5542s
+  step  2300/10000  loss=-1.1646  c_loss=0.003887  elapsed=5665s
+  step  2350/10000  loss=-1.2841  c_loss=0.002167  elapsed=5788s
+  step  2400/10000  loss=-1.1697  c_loss=0.005317  elapsed=5910s
+  step  2450/10000  loss=-1.1743  c_loss=0.007875  elapsed=6033s
+  step  2500/10000  loss=-1.2814  c_loss=0.004856  elapsed=6155s
+  Saved LoRA checkpoint → /scratch/izar/silly/lora_checkpoints/mixed_styles_gray_consistency/step_002500
+  step  2550/10000  loss=-1.2401  c_loss=0.006110  elapsed=6278s
+  step  2600/10000  loss=-1.2137  c_loss=0.005102  elapsed=6401s

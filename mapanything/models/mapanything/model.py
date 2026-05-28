@@ -1520,6 +1520,24 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
 
         return dense_final_outputs, pose_final_outputs, scale_final_output
 
+    def enable_input_require_grads(self):
+        # Required for gradient checkpointing + LoRA: ensures activations leaving the
+        # encoder carry requires_grad=True even when the encoder inputs are frozen.
+        def _hook(module, input, output):
+            if isinstance(output, torch.Tensor):
+                output.requires_grad_(True)
+            elif isinstance(output, (tuple, list)):
+                for o in output:
+                    if isinstance(o, torch.Tensor):
+                        o.requires_grad_(True)
+        self._require_grads_hook = self.encoder.register_forward_hook(_hook)
+
+    def gradient_checkpointing_enable(self, gradient_checkpointing_kwargs=None):
+        if hasattr(self.encoder, "gradient_checkpointing_enable"):
+            self.encoder.gradient_checkpointing_enable(
+                **(gradient_checkpointing_kwargs or {})
+            )
+
     def forward(self, views, memory_efficient_inference=False, minibatch_size=None):
         """
         Forward pass performing the following operations:
