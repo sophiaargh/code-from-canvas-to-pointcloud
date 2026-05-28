@@ -4,6 +4,9 @@ This repository collects tools, models and evaluation pipelines for visual-style
 
 This project was developed for the EPFL course **CS503 — Visual Intelligence: Machines and Minds**.
 
+## Report and visualizations
+Checkout the website! [https://sophiaargh.github.io/from-canvas-to-pointcloud/](https://sophiaargh.github.io/from-canvas-to-pointcloud/)
+
 **Quick links**
 - **TeleStyle**: [TeleStyle](TeleStyle/README.md) — style transfer inference & pipelines
 - **LoRA adapters**: [lora/README.md](lora/README.md) — LoRA training and examples
