@@ -1,0 +1,16 @@
+Baseline_Raw,Baseline,Variant,Value,SEM
+photographs,Photographs,Normal,0.075412,0.005934701515275037
+photographs,Photographs,Grayscale,0.076937,0.0056819759346557214
+photographs,Photographs,Film,0.075762,0.0060776820546135325
+watercolor,Watercolor,Normal,0.125403,0.00931646582151777
+watercolor,Watercolor,Grayscale,0.118274,0.010237574909248207
+watercolor,Watercolor,Film,0.111793,0.00983609342985878
+oil_painting,Oil Painting,Normal,0.10354,0.007861004592978818
+oil_painting,Oil Painting,Grayscale,0.105663,0.008583237127808027
+oil_painting,Oil Painting,Film,0.092251,0.008986330854208455
+impressionism,Impressionism,Normal,0.100782,0.010341288829908426
+impressionism,Impressionism,Grayscale,0.094218,0.011241313292473909
+impressionism,Impressionism,Film,0.109615,0.00965125017822925
+engraving,Engraving,Normal,0.088906,0.009538030830331001
+engraving,Engraving,Grayscale,0.089288,0.009873825890048232
+engraving,Engraving,Film,0.090162,0.010138470438207535

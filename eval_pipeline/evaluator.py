@@ -3,9 +3,23 @@ import csv
 import numpy as np
 from scipy.spatial import cKDTree
 import torch
+from huggingface_hub import snapshot_download
 from mapanything.utils.image import load_images
 from .models import infer
 import re
+from PIL import Image, ImageFilter
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+REPO_ID = "sophiargh/StylizedBlendedMVS"
+
+# Baselines that correspond directly to a folder in the dataset
+STYLE_FOLDERS = {"photographs", "watercolor", "oil_painting", "engraving", "impressionism"}
+
+# Baselines that are synthetic transforms applied on top of photographs
+SYNTHETIC_MODIFICATIONS = {"grayscale", "film"}
 
 
 # --- file readers / geometry (adapted small helpers) ---
@@ -90,14 +104,12 @@ def icp_align(pred_pts, gt_pts, n_iters=50):
 
 def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
     gt_parts = []
-    last_gt_depth = None
     for vid in view_ids:
         depth_path = os.path.join(scene_dir, "rendered_depth_maps", f"{vid:08d}.pfm")
         cam_path   = os.path.join(scene_dir, "cams",                f"{vid:08d}_cam.txt")
         gt_depth   = read_pfm(depth_path)
         K, E       = read_cam(cam_path)
         gt_parts.append(depth_to_world_pcd(gt_depth, K, E))
-        last_gt_depth = gt_depth
     gt_pts = np.concatenate(gt_parts, axis=0)
     pred_parts = []
     for pred in predictions:
@@ -133,65 +145,88 @@ def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
 # --- Evaluator class ---
 
 class Evaluator:
-    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results", max_scenes=None):
+    def __init__(self, model, device, baseline_name, style, max_pts=50_000,
+                 out_dir="evaluation_results", max_scenes=None, modification=None):
         self.model = model
         self.device = device
         self.baseline_name = baseline_name
+        self.style = style
         self.max_pts = max_pts
         self.out_dir = out_dir
+        self.modification = modification
         self.max_scenes = max_scenes
         os.makedirs(self.out_dir, exist_ok=True)
 
+    def _get_dataset_root(self):
+        """
+        Download (or reuse a cached copy of) the HuggingFace dataset and return
+        the local root directory that contains all scene_X folders.
+        """
+        cache_dir = os.environ.get("HF_DATASETS_CACHE")
+        print(f"Fetching dataset '{REPO_ID}' from HuggingFace Hub, to the cache path: {cache_dir}", flush=True)
+        local_dir = snapshot_download(
+            repo_id=REPO_ID,
+            repo_type="dataset",
+            cache_dir=cache_dir,  
+        )
+        return local_dir
+
+    def _image_folder_for_baseline(self):
+        """
+        Return the sub-folder name that holds the source images for the current
+        baseline.  Synthetic modifications (grayscale, film) are built on top of
+        the photographs folder.
+        """
+        if self.modification in SYNTHETIC_MODIFICATIONS:
+            return "photographs"
+        if self.style in STYLE_FOLDERS:
+            return self.style
+        # Fallback — try to use style as a folder name directly
+        return self.style
+
     def evaluate_scene(self, scene_dir):
-        blended_dir = os.path.join(scene_dir, "blended_images")
+        img_folder_name = self._image_folder_for_baseline()
+        img_dir   = os.path.join(scene_dir, img_folder_name)
         depth_dir = os.path.join(scene_dir, "rendered_depth_maps")
-        if not os.path.isdir(blended_dir) or not os.path.isdir(depth_dir):
-            print("Could not find scene !")
+        cam_dir   = os.path.join(scene_dir, "cams")
+
+        if not os.path.isdir(img_dir) or not os.path.isdir(depth_dir):
+            print(f"Could not find required folders in {scene_dir} "
+                  f"(looked for '{img_folder_name}' and 'rendered_depth_maps')")
             return None
 
-        # gather available ids that have both image and depth
+        # Gather available ids that have both image and depth
         available = []
-
-        for fn in os.listdir(blended_dir):
+        for fn in os.listdir(img_dir):
             m = re.match(r"(\d{8})(?:_result)?\.(jpg|png)$", fn)
             if not m:
                 continue
-
             vid = int(m.group(1))
             depth_path = os.path.join(depth_dir, f"{vid:08d}.pfm")
-
-            if os.path.exists(depth_path):
+            cam_path   = os.path.join(cam_dir,   f"{vid:08d}_cam.txt")
+            if os.path.exists(depth_path) and os.path.exists(cam_path):
                 available.append((vid, fn))
 
         available = sorted(available, key=lambda x: x[0])
         if not available:
-            print("Could not find scene !")
+            print(f"No valid frames found in {scene_dir}/{img_folder_name}")
             return None
-        
-        # If using the original renamed dataset, subsample every 5th frame.
-        # Otherwise the dataset is already subsampled.
-        if "renamed" in scene_dir:
-            selected = [(vid, fn) for vid, fn in available if vid >= 5 and (vid % 5) == 0]
-        else:
-            selected = available
 
-        selected = selected[:8]
+        # The HF dataset is already subsampled (every 5th frame), so no
+        # additional stride filtering is needed — just cap at 8 views.
+        selected = available[:8]
 
-        if not selected:
-            print(f"No valid selected views in {scene_dir}")
+        # Build image paths, applying synthetic modifications if requested
+        image_paths = self._prepare_images(selected, img_dir, scene_dir)
+        if image_paths is None:
             return None
-    
-        image_paths = [
-            os.path.join(blended_dir, fn)
-            for vid, fn in selected
-        ]
 
         gt_depth_paths = [
             os.path.join(depth_dir, f"{vid:08d}.pfm")
             for vid, fn in selected
         ]
-
         selected_ids = [vid for vid, fn in selected]
+
         views = load_images(image_paths, resolution_set=518, norm_type="dinov2", patch_size=14)
         with torch.no_grad():
             predictions = infer(self.model, views)
@@ -206,46 +241,82 @@ class Evaluator:
             if m is not None:
                 per_view.append(m)
         if not per_view:
-            print("not per_view")
+            print("No valid depth views")
             return None
+
         abs_rel_scene = float(np.mean([m["AbsRel"] for m in per_view]))
         rmse_scene    = float(np.mean([m["RMSE"]   for m in per_view]))
-        pcd_metrics = evaluate_pointcloud(predictions, scene_dir, selected_ids, self.max_pts)
+        pcd_metrics   = evaluate_pointcloud(predictions, scene_dir, selected_ids, self.max_pts)
 
-        row = {
-            "scene": os.path.basename(scene_dir),
-            "baseline": self.baseline_name,
-            "AbsRel": round(abs_rel_scene, 6),
-            "RMSE": round(rmse_scene, 6),
-            "chamfer": round(pcd_metrics["chamfer"], 6),
-            "fscore": round(pcd_metrics["fscore"], 6),
+        return {
+            "scene":     os.path.basename(scene_dir),
+            "baseline":  self.baseline_name,
+            "AbsRel":    round(abs_rel_scene, 6),
+            "RMSE":      round(rmse_scene, 6),
+            "chamfer":   round(pcd_metrics["chamfer"],   6),
+            "fscore":    round(pcd_metrics["fscore"],    6),
             "precision": round(pcd_metrics["precision"], 6),
-            "recall": round(pcd_metrics["recall"], 6),
+            "recall":    round(pcd_metrics["recall"],    6),
         }
-        return row
 
-    def run(self, data_dir):
-        scene_dirs = [d for d in os.listdir(data_dir)
-              if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))]
+    def _prepare_images(self, selected, img_dir, scene_dir):
+        """
+        Return a list of local image paths for `selected` frames.
+        For synthetic modifications the images are written to a temp dir;
+        for real style folders they are used directly.
+        """
+        if self.modification == "grayscale":
+            temp_dir   = "./temp"
+            os.makedirs(temp_dir, exist_ok=True)
+            scene_name = os.path.basename(os.path.normpath(scene_dir))
+            paths = []
+            for vid, fn in selected:
+                orig_path = os.path.join(img_dir, fn)
+                temp_path = os.path.join(temp_dir, f"{scene_name}_gray_{fn}")
+                with Image.open(orig_path) as img:
+                    img.convert("L").convert("RGB").save(temp_path)
+                paths.append(temp_path)
+            return paths
 
-        # count valid image files in blended_images 
-        def _count_blended_images(scene):
-            blended = os.path.join(data_dir, scene, "blended_images")
-            return len([name for name in os.listdir(blended) if os.path.isfile(os.path.join(blended, name))])
+        elif self.modification == "film":
+            temp_dir      = "./temp"
+            os.makedirs(temp_dir, exist_ok=True)
+            scene_name    = os.path.basename(os.path.normpath(scene_dir))
+            grain_intensity = 20.0
+            paths = []
+            for vid, fn in selected:
+                orig_path = os.path.join(img_dir, fn)
+                temp_path = os.path.join(temp_dir, f"{scene_name}_film_{fn}")
+                with Image.open(orig_path) as img:
+                    gray      = img.convert("L")
+                    blurred   = gray.filter(ImageFilter.GaussianBlur(radius=0.5))
+                    arr       = np.array(blurred, dtype=np.float32)
+                    noise     = np.random.normal(0.0, grain_intensity, arr.shape)
+                    noisy     = np.clip(arr + noise, 0, 255).astype(np.uint8)
+                    Image.fromarray(noisy).convert("RGB").save(temp_path)
+                paths.append(temp_path)
+            return paths
 
-        # keep only scenes with fewer than 150 images (300 because there are the masked images in the original folder) if original or 30 images if stylized
-        
-        if "photographs" in self.baseline_name:
-            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 300])
         else:
-            scenes = sorted([s for s in scene_dirs if _count_blended_images(s) < 30])
+            # Real style folder — use files directly, no temp copies needed
+            return [os.path.join(img_dir, fn) for _, fn in selected]
 
-        print(f"Original number of scenes: {len(scene_dirs)}. Number of scenes kept: {len(scenes)}")
+    def run(self):
+        """
+        Download the dataset from HuggingFace Hub (cached after the first run)
+        and evaluate every scene_X directory found inside it.
+        """
+        data_dir = self._get_dataset_root()
+
+        scenes = sorted(
+            d for d in os.listdir(data_dir)
+            if d.startswith("scene") and os.path.isdir(os.path.join(data_dir, d))
+        )
 
         if self.max_scenes:
             scenes = scenes[:self.max_scenes]
             print(f"Max scenes specified. Evaluating {len(scenes)} scenes")
-        
+
         all_rows = []
         for scene in scenes:
             scene_dir = os.path.join(data_dir, scene)
@@ -256,33 +327,35 @@ class Evaluator:
                 continue
             all_rows.append(row)
             print(f"  -> done: {scene}")
+
         if not all_rows:
             print("No scenes evaluated successfully.")
             return
-        out_path = os.path.join(self.out_dir, f"{self.baseline_name}.csv")
+
+        out_path   = os.path.join(self.out_dir, f"{self.baseline_name}.csv")
         fieldnames = ["scene", "baseline", "AbsRel", "RMSE", "chamfer", "fscore", "precision", "recall"]
+
         with open(out_path, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(all_rows)
             writer.writerow({
-                "scene": "MEAN",
-                "baseline": self.baseline_name,
-                "AbsRel": round(np.mean([r["AbsRel"] for r in all_rows]), 6),
-                "RMSE": round(np.mean([r["RMSE"] for r in all_rows]), 6),
-                "chamfer": round(np.mean([r["chamfer"] for r in all_rows]), 6),
-                "fscore": round(np.mean([r["fscore"] for r in all_rows]), 6),
+                "scene": "MEAN", "baseline": self.baseline_name,
+                "AbsRel":    round(np.mean([r["AbsRel"]    for r in all_rows]), 6),
+                "RMSE":      round(np.mean([r["RMSE"]      for r in all_rows]), 6),
+                "chamfer":   round(np.mean([r["chamfer"]   for r in all_rows]), 6),
+                "fscore":    round(np.mean([r["fscore"]    for r in all_rows]), 6),
                 "precision": round(np.mean([r["precision"] for r in all_rows]), 6),
-                "recall": round(np.mean([r["recall"] for r in all_rows]), 6),
+                "recall":    round(np.mean([r["recall"]    for r in all_rows]), 6),
             })
             writer.writerow({
-                "scene": "MEDIAN",
-                "baseline": self.baseline_name,
-                "AbsRel": round(np.median([r["AbsRel"] for r in all_rows]), 6),
-                "RMSE": round(np.median([r["RMSE"] for r in all_rows]), 6),
-                "chamfer": round(np.median([r["chamfer"] for r in all_rows]), 6),
-                "fscore": round(np.median([r["fscore"] for r in all_rows]), 6),
+                "scene": "MEDIAN", "baseline": self.baseline_name,
+                "AbsRel":    round(np.median([r["AbsRel"]    for r in all_rows]), 6),
+                "RMSE":      round(np.median([r["RMSE"]      for r in all_rows]), 6),
+                "chamfer":   round(np.median([r["chamfer"]   for r in all_rows]), 6),
+                "fscore":    round(np.median([r["fscore"]    for r in all_rows]), 6),
                 "precision": round(np.median([r["precision"] for r in all_rows]), 6),
-                "recall": round(np.median([r["recall"] for r in all_rows]), 6),
+                "recall":    round(np.median([r["recall"]    for r in all_rows]), 6),
             })
+
         print(f"Results saved to: {out_path}")
