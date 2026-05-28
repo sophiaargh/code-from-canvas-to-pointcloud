@@ -6,8 +6,7 @@ import torch
 from mapanything.utils.image import load_images
 from .models import infer
 import re
-
-
+from PIL import Image, ImageFilter
 # --- file readers / geometry (adapted small helpers) ---
 
 def read_pfm(filepath):
@@ -133,12 +132,13 @@ def evaluate_pointcloud(predictions, scene_dir, view_ids, max_pts=50_000):
 # --- Evaluator class ---
 
 class Evaluator:
-    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results", max_scenes=None):
+    def __init__(self, model, device, baseline_name="baseline", max_pts=50_000, out_dir="evaluation_results", max_scenes=None, modification=None):
         self.model = model
         self.device = device
         self.baseline_name = baseline_name
         self.max_pts = max_pts
         self.out_dir = out_dir
+        self.modification = modification
         self.max_scenes = max_scenes
         os.makedirs(self.out_dir, exist_ok=True)
 
@@ -180,12 +180,71 @@ class Evaluator:
         if not selected:
             print(f"No valid selected views in {scene_dir}")
             return None
-    
+
         image_paths = [
             os.path.join(blended_dir, fn)
             for vid, fn in selected
         ]
 
+        if(self.modification == 'grayscale'):
+            # ---------------------------------------------------------
+            # NEW GRAYSCALE EXPERIMENT LOGIC
+            # ---------------------------------------------------------
+            temp_dir = "/scratch/izar/silly/temp2/"
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            # Grab the scene name to avoid overwriting files if you run multiple scenes in a row
+            scene_name = os.path.basename(os.path.normpath(scene_dir))
+            
+            image_paths = []
+            for vid, fn in selected:
+                orig_path = os.path.join(blended_dir, fn)
+                # Prefix with scene_name so names like "00000000.png" don't collide across scenes
+                temp_path = os.path.join(temp_dir, f"{scene_name}_gray_{fn}")
+                
+                # Convert to Grayscale ("L"), then back to 3-Channel ("RGB") to satisfy DINOv2
+                with Image.open(orig_path) as img:
+                    gray_3channel = img.convert("L").convert("RGB")
+                    gray_3channel.save(temp_path)
+                
+                image_paths.append(temp_path)
+            # ---------------------------------------------------------
+                
+        elif (self.modification == 'film'):
+            # ---------------------------------------------------------
+            # GRAYSCALE + FILM GRAIN EXPERIMENT
+            # ---------------------------------------------------------
+            temp_dir = "/scratch/izar/silly/temp2/"
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            scene_name = os.path.basename(os.path.normpath(scene_dir))
+            
+            # Grain intensity: 15 is generally noticeable but not overwhelming. 
+            # Increase to ~25 for heavy degradation, drop to ~8 for very subtle grain.
+            grain_intensity = 20.0 
+            
+            image_paths = []
+            for vid, fn in selected:
+                orig_path = os.path.join(blended_dir, fn)
+                temp_path = os.path.join(temp_dir, f"{scene_name}_film_{fn}")
+                
+                with Image.open(orig_path) as img:
+                    # Grayscale
+                    gray = img.convert("L")
+                    
+                    # Slight Gaussian blur for old lens / painting deterioration
+                    blurred = gray.filter(ImageFilter.GaussianBlur(radius=0.5))
+                    
+                    # Add Gaussian Noise
+                    img_array = np.array(blurred, dtype=np.float32)
+                    noise = np.random.normal(loc=0.0, scale=grain_intensity, size=img_array.shape)
+                    noisy_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
+                    
+                    final_img = Image.fromarray(noisy_array).convert("RGB")
+                    final_img.save(temp_path)
+                
+                image_paths.append(temp_path)
+        # ---------------------------------------------------------
         gt_depth_paths = [
             os.path.join(depth_dir, f"{vid:08d}.pfm")
             for vid, fn in selected
