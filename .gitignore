@@ -6,5 +6,6 @@ eval_pipeline/mapanything/*
 eval_pipeline/logs/*
 logs/
 TeleStyle/logs/
+lora/logs/
 *.log
 __pycache__/

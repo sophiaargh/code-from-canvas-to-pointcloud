@@ -29,9 +29,9 @@ DATA_DIR=/scratch/izar/silly/BlendedMVS/renamed
 LORA_1=/scratch/izar/silly/lora_checkpoints/mixed_styles_gray/final
 LORA_2=/scratch/izar/silly/lora_checkpoints/mixed_styles_gray_consistency/step_002500
 
-python -m eval_pipeline.visualize_depth \
+python lora/pcd_from_depth.py \
   --data_dir        $DATA_DIR \
-  --max_scenes      20 \
+  --max_scenes      100 \
   --styled_root     $STYLED_ROOT \
   --style_names     engraving impressionism oil_painting watercolor \
   --checkpoint      facebook/map-anything \
