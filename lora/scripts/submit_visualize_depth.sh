@@ -29,7 +29,7 @@ DATA_DIR=/scratch/izar/silly/BlendedMVS/renamed
 LORA_1=/scratch/izar/silly/lora_checkpoints/mixed_styles_gray/final
 LORA_2=/scratch/izar/silly/lora_checkpoints/mixed_styles_gray_consistency/step_002500
 
-python lora/pcd_from_depth.py \
+python -m lora.pcd_from_depth \
   --data_dir        $DATA_DIR \
   --max_scenes      100 \
   --styled_root     $STYLED_ROOT \
