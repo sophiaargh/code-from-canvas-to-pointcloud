@@ -7,8 +7,8 @@
 #SBATCH --mem=32G
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --output=notre_dame_example/logs/infer_%j.out
-#SBATCH --error=notre_dame_example/logs/infer_%j.err
+#SBATCH --output=logs/notre_dame_%j.out
+#SBATCH --error=logs/notre_dame_%j.err
 
 export HF_HOME="/scratch/izar/$USER/huggingface"
 export HF_HUB_CACHE="/scratch/izar/$USER/huggingface/hub"
@@ -21,7 +21,7 @@ conda activate visual-intel
 
 export PYTHONPATH="/home/$USER/visual-intelligence:${PYTHONPATH}"
 
-mkdir -p notre_dame_example/logs
+mkdir -p logs
 
 LORA=$SHARED_SCRATCH_DIR/lora_checkpoints/mixed_styles_gray/final
 LORA_CONSISTENCY=$SHARED_SCRATCH_DIR/lora_checkpoints/mixed_styles_gray_consistency/step_002500
