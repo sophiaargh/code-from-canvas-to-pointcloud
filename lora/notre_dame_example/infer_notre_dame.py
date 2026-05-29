@@ -15,7 +15,7 @@ import numpy as np
 import torch
 import trimesh
 
-from eval_pipeline.models import get_model, infer, load_with_lora
+from lora.eval.models import get_model, infer, load_with_lora
 from mapanything.utils.image import load_images
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

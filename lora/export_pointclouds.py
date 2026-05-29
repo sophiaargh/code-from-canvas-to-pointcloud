@@ -19,7 +19,7 @@ import numpy as np
 import torch
 import trimesh
 
-from eval_pipeline.models import get_model, infer, load_with_lora
+from lora.eval.models import get_model, infer, load_with_lora
 from mapanything.utils.colmap_export import voxel_downsample_point_cloud
 from mapanything.utils.image import load_images
 
