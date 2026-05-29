@@ -30,7 +30,7 @@ LORA_CONST=$SHARED_SCRATCH_DIR/lora_checkpoints/mixed_styles_gray_consistency/st
 
 SCENES="scene_15 scene_33 scene_51 scene_63 scene_100 scene_22 scene_1 scene_27 scene_16 scene_26 scene_40 scene_23 scene_36 scene_38 scene_0 scene_13"
 
-python -m lora.export_pointclouds.py \
+python -m lora.export_pointclouds \
   --condition mixed_baseline \
   --data_dir $DATA_DIR \
   --styled_root $STYLED_ROOT \
@@ -39,7 +39,7 @@ python -m lora.export_pointclouds.py \
   --grayscale \
   --scenes $SCENES
 
-python -m lora.export_pointclouds.py \
+python -m lora.export_pointclouds \
   --condition mixed_lora \
   --data_dir $DATA_DIR \
   --styled_root $STYLED_ROOT \
@@ -49,7 +49,7 @@ python -m lora.export_pointclouds.py \
   --grayscale \
   --scenes $SCENES
 
-python -m lora.export_pointclouds.py \
+python -m lora.export_pointclouds \
   --condition mixed_lora_const \
   --data_dir $DATA_DIR \
   --styled_root $STYLED_ROOT \
