@@ -17,44 +17,42 @@ export HF_DATASETS_CACHE="/scratch/izar/$USER/huggingface/datasets"
 export SHARED_SCRATCH_DIR="/scratch/izar/silly"
 
 source "${HOME}/miniconda3/etc/profile.d/conda.sh"
-conda activate mapanything
+conda activate visual-intel
 
-export PYTHONPATH="/home/qsandoz/visual-intelligence:${PYTHONPATH}"
+export PYTHONPATH="/home/$USER/visual-intelligence:${PYTHONPATH}"
 
 mkdir -p notre_dame_example/logs
-
-cd /home/qsandoz/visual-intelligence
 
 LORA=$SHARED_SCRATCH_DIR/lora_checkpoints/mixed_styles_gray/final
 LORA_CONSISTENCY=$SHARED_SCRATCH_DIR/lora_checkpoints/mixed_styles_gray_consistency/step_002500
 
 # Base model (no LoRA)
-python notre_dame_example/infer_notre_dame.py \
-  --out_path notre_dame_example/notre_dame_base.ply \
+python lora.notre_dame_example.infer_notre_dame.py \
+  --out_path lora/notre_dame_example/notre_dame_base.ply \
   --grayscale --n_points 0
 
-python notre_dame_example/infer_notre_dame.py \
-  --out_path notre_dame_example/notre_dame_base_viewcolors.ply \
+python lora.notre_dame_example.infer_notre_dame.py \
+  --out_path lora/notre_dame_example/notre_dame_base_viewcolors.ply \
   --grayscale --n_points 0 --color_by_view
 
 # LoRA model
-python notre_dame_example/infer_notre_dame.py \
+python lora.notre_dame_example.infer_notre_dame.py \
   --lora_path $LORA \
-  --out_path notre_dame_example/notre_dame_lora.ply \
+  --out_path lora/notre_dame_example/notre_dame_lora.ply \
   --grayscale --n_points 0
 
-python notre_dame_example/infer_notre_dame.py \
+python lora.notre_dame_example.infer_notre_dame.py \
   --lora_path $LORA \
-  --out_path notre_dame_example/notre_dame_lora_viewcolors.ply \
+  --out_path lora/notre_dame_example/notre_dame_lora_viewcolors.ply \
   --grayscale --n_points 0 --color_by_view
 
 # LoRA consistency model
-python notre_dame_example/infer_notre_dame.py \
+python lora.notre_dame_example.infer_notre_dame.py \
   --lora_path $LORA_CONSISTENCY \
-  --out_path notre_dame_example/notre_dame_lora_consistency.ply \
+  --out_path lora/notre_dame_example/notre_dame_lora_consistency.ply \
   --grayscale --n_points 0
 
-python notre_dame_example/infer_notre_dame.py \
+python lora.notre_dame_example.infer_notre_dame.py \
   --lora_path $LORA_CONSISTENCY \
-  --out_path notre_dame_example/notre_dame_lora_consistency_viewcolors.ply \
+  --out_path lora/notre_dame_example/notre_dame_lora_consistency_viewcolors.ply \
   --grayscale --n_points 0 --color_by_view

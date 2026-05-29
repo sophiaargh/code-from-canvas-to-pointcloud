@@ -30,7 +30,7 @@ Checkout the website! [https://sophiaargh.github.io/from-canvas-to-pointcloud/](
 Installation (example using conda)
 
 ```bash
-conda create -n visual-intel python=3.10 -y
+conda create -n visual-intel python=3.11 -y
 conda activate visual-intel
 pip install -r TeleStyle/requirements.txt
 pip install -r lora/requirements.txt
