@@ -17,9 +17,9 @@ export HF_DATASETS_CACHE="/scratch/izar/$USER/huggingface/datasets"
 export SHARED_SCRATCH_DIR="/scratch/izar/silly"
 
 source "${HOME}/miniconda3/etc/profile.d/conda.sh"
-conda activate mapanything
+conda activate visual-intel
 
-export PYTHONPATH="/home/qsandoz/visual-intelligence:${PYTHONPATH}"
+export PYTHONPATH="/home/$USER/visual-intelligence:${PYTHONPATH}"
 
 mkdir -p logs
 
